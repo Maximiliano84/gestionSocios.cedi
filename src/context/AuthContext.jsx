@@ -206,3 +206,43 @@ export function hasRole(user, ...roles) {
   const role = normalizeRole(user.role || user.rol);
   return roles.map(normalizeRole).includes(role);
 }
+
+export function isAdmin(user) {
+  return hasRole(user, "admin");
+}
+
+export function isSecretaria(user) {
+  return hasRole(user, "secretaria");
+}
+
+export function isComision(user) {
+  return hasRole(user, "comision");
+}
+
+export function isEntrenador(user) {
+  return hasRole(user, "entrenador");
+}
+
+export function canManageUsers(user) {
+  return hasRole(user, "admin");
+}
+
+export function canManageSocios(user) {
+  return hasRole(user, "admin", "secretaria");
+}
+
+export function canViewCarnets(user) {
+  return hasRole(user, "admin", "secretaria", "comision", "entrenador");
+}
+
+export function canManagePagos(user) {
+  return hasRole(user, "admin", "secretaria");
+}
+
+export function canViewAdminReports(user) {
+  return hasRole(user, "admin", "secretaria", "comision");
+}
+
+export function canAnularPagos(user) {
+  return hasRole(user, "admin", "secretaria");
+}

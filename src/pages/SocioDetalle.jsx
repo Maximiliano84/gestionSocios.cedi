@@ -41,6 +41,7 @@ export default function SocioDetalle() {
     return <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" />Cargando ficha...</div>;
   }
 
+  const isEntrenador = hasRole(user, "entrenador");
   const canEdit = hasRole(user, "admin", "secretaria");
   const canDeletePermanente = hasRole(user, "admin") && socio.estado === "baja";
   const canSeeSensitive = hasRole(user, "admin", "secretaria");
@@ -120,6 +121,11 @@ export default function SocioDetalle() {
             {socio.apellido}, {socio.nombre}
           </h1>
           <p className="text-slate-500 mt-1">Socio N° {socio.numeroSocio} · Categoría {socio.categoria} · Fútbol</p>
+          {isEntrenador && (
+            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Vista de entrenador: solo se muestra el carnet de la categoría asignada.
+            </p>
+          )}
         </div>
         <div className="flex gap-2 flex-wrap">
           {canEdit && (
@@ -152,7 +158,8 @@ export default function SocioDetalle() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_560px] lg:grid-cols-[minmax(0,1fr)_500px]">
+      <div className={isEntrenador ? "grid gap-6 max-w-[620px]" : "grid gap-6 xl:grid-cols-[minmax(0,1fr)_560px] lg:grid-cols-[minmax(0,1fr)_500px]"}>
+        {!isEntrenador && (
         <div className="space-y-6">
           <Section title="Datos del socio">
             <Row k="Estado" v={<EstadoBadge v={socio.estado} />} />
@@ -208,6 +215,7 @@ export default function SocioDetalle() {
             )}
           </Section>
         </div>
+        )}
 
         <div className="space-y-4 w-full lg:justify-self-end">
           <div className="w-full max-w-[560px] lg:max-w-none xl:w-[560px]">
@@ -238,6 +246,7 @@ export default function SocioDetalle() {
             onDownloadImage={downloadCarnetPNG}
             onSendPaymentLink={compartirLinkPago}
             publicUrl={publicCarnetUrl}
+            showPaymentActions={!isEntrenador}
           />
           </div>
         </div>

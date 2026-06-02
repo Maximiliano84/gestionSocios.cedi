@@ -14,7 +14,7 @@ export default function Login() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={user?.role === "entrenador" ? "/socios" : "/"} replace />;
 
   const onSubmit = async (e) => {
     e.preventDefault();

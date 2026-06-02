@@ -681,7 +681,18 @@ async function snapshotFirestorePagosActividadByActividad(actividad = {}, alumno
 
 function normalizeUserFirestore(id, data = {}) {
   const rawRole = String(data.rol || data.role || "consulta").trim().toLowerCase();
-  const role = rawRole === "administrador" ? "admin" : rawRole;
+  const roleMap = {
+    administrador: "admin",
+    admin: "admin",
+    secretaria: "secretaria",
+    "secretaría": "secretaria",
+    comision: "comision",
+    "comisión": "comision",
+    entrenador: "entrenador",
+    profesor: "entrenador",
+    consulta: "entrenador",
+  };
+  const role = roleMap[rawRole] || rawRole;
   return publicUser({
     id,
     uid: id,
@@ -712,15 +723,20 @@ async function createFirestoreUserProfile(body = {}) {
   const uid = String(body.uid || body.id || body.firebaseUid || "").trim();
   const email = String(body.email || "").trim().toLowerCase();
   const nombre = String(body.nombre || body.name || "").trim();
-  const rol = String(body.rol || body.role || "secretaria").trim().toLowerCase();
+  const rawRol = String(body.rol || body.role || "secretaria").trim().toLowerCase();
+  const rolMap = { administrador: "admin", admin: "admin", secretaria: "secretaria", "secretaría": "secretaria", comision: "comision", "comisión": "comision", entrenador: "entrenador", profesor: "entrenador" };
+  const rol = rolMap[rawRol] || rawRol;
+  const allowedRoles = ["admin", "secretaria", "comision", "entrenador"];
   if (!uid) throw { response: { status: 400, data: { detail: "Pegá el UID del usuario creado en Firebase Authentication." } } };
   if (!email || !nombre) throw { response: { status: 400, data: { detail: "Nombre y email son obligatorios." } } };
+  if (!allowedRoles.includes(rol)) throw { response: { status: 400, data: { detail: "Rol inválido." } } };
+  if (rol === "entrenador" && !String(body.categoria || "").trim()) throw { response: { status: 400, data: { detail: "El entrenador debe tener una categoría asignada." } } };
 
   const data = {
     nombre,
     email,
-    rol: rol === "administrador" ? "admin" : rol,
-    categoria: body.categoria || "",
+    rol,
+    categoria: rol === "entrenador" ? String(body.categoria || "").trim() : "",
     activo: body.activo !== false,
     actualizadoEn: serverTimestamp(),
   };
@@ -1024,7 +1040,7 @@ const api = {
     if (pathname === "/socios") {
       const u = requireLogin();
       let socios = db.socios;
-      if (u.role === "entrenador" && u.categoria) socios = socios.filter((s) => s.categoria === u.categoria);
+      if (u.role === "entrenador") socios = u.categoria ? socios.filter((s) => s.categoria === u.categoria) : [];
       if (params.categoria && params.categoria !== "todas") socios = socios.filter((s) => s.categoria === params.categoria);
       if (params.estado && params.estado !== "todos") socios = socios.filter((s) => s.estado === params.estado);
       if (params.search) {
@@ -1041,8 +1057,11 @@ const api = {
       const id = pathname.split("/").pop();
       const socio = db.socios.find((s) => s.id === id);
       if (!socio) throw { response: { status: 404, data: { detail: "Socio no encontrado" } } };
+      if (u.role === "entrenador" && (!u.categoria || socio.categoria !== u.categoria)) {
+        throw { response: { status: 403, data: { detail: "Solo podés ver carnets de tu categoría asignada." } } };
+      }
       const out = enrichSocio(db, socio, u);
-      out.pagos = db.pagos.filter((p) => p.socioId === id).sort(sortPagosDesc).map((p) => withSocioInfo(db, p));
+      out.pagos = u.role === "entrenador" ? [] : db.pagos.filter((p) => p.socioId === id).sort(sortPagosDesc).map((p) => withSocioInfo(db, p));
       return ok(out);
     }
 
@@ -1062,7 +1081,7 @@ const api = {
       const u = requireLogin();
       const anio = Number(params.anio || new Date().getFullYear());
       let socios = db.socios.filter((s) => s.estado !== "baja");
-      if (u.role === "entrenador" && u.categoria) socios = socios.filter((s) => s.categoria === u.categoria);
+      if (u.role === "entrenador") socios = u.categoria ? socios.filter((s) => s.categoria === u.categoria) : [];
       if (params.categoria && params.categoria !== "todas") socios = socios.filter((s) => s.categoria === params.categoria);
       const meses = Array.from({ length: 12 }, (_, i) => `${anio}-${String(i + 1).padStart(2, "0")}`);
       const actual = currentMonth();
@@ -1286,6 +1305,17 @@ const api = {
     const db = await loadDb();
     const { pathname } = parseQuery(path);
     const u = requireLogin();
+    if (pathname.startsWith("/users/")) {
+      requireRole(u, ["admin"]);
+      const id = pathname.split("/").pop();
+      try {
+        const updated = await createFirestoreUserProfile({ ...body, uid: id });
+        return ok(updated);
+      } catch (error) {
+        if (error?.response) throw error;
+        throw firestoreApiError(error, "No se pudo actualizar el perfil de usuario.");
+      }
+    }
     if (pathname === "/config") {
       requireRole(u, ["admin"]);
       db.config = publicConfig({ ...db.config, ...body, actividades: normalizeActividades(body.actividades || db.config.actividades) });

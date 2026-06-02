@@ -69,6 +69,7 @@ export default function Socios() {
   }, []);
   useEffect(() => { fetchList(); }, [search, categoria, estado, estadoCuota]);
 
+  const isEntrenador = hasRole(user, "entrenador");
   const canEdit = hasRole(user, "admin", "secretaria");
   const canExport = hasRole(user, "admin", "secretaria", "comision");
   const canDeletePermanente = hasRole(user, "admin");
@@ -141,8 +142,12 @@ export default function Socios() {
     <div className="space-y-6" data-testid="socios-page">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: "Outfit, sans-serif" }}>Socios</h1>
-          <p className="text-slate-500 mt-1">{list.length} socios de fútbol encontrados</p>
+          <h1 className="text-3xl font-bold text-slate-900" style={{ fontFamily: "Outfit, sans-serif" }}>{isEntrenador ? "Carnets de mi categoría" : "Socios"}</h1>
+          <p className="text-slate-500 mt-1">
+            {isEntrenador
+              ? `${list.length} jugadores de la categoría ${user?.categoria || "asignada"}`
+              : `${list.length} socios de fútbol encontrados`}
+          </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {canEdit && (
@@ -168,7 +173,13 @@ export default function Socios() {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-4 gap-3">
+      {isEntrenador && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Acceso de entrenador: solo podés ver y descargar carnets de la categoría asignada. No se muestran datos administrativos ni pagos.
+        </div>
+      )}
+
+      <div className={`bg-white border border-slate-200 rounded-lg p-4 grid gap-3 ${isEntrenador ? "md:grid-cols-1" : "md:grid-cols-4"}`}>
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
@@ -179,30 +190,34 @@ export default function Socios() {
             className="pl-9"
           />
         </div>
-        <Select value={categoria} onValueChange={setCategoria}>
-          <SelectTrigger data-testid="filter-categoria"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas las categorías</SelectItem>
-            {categorias.map((c) => <SelectItem key={c} value={c}>Categoría {c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={estado} onValueChange={setEstado}>
-          <SelectTrigger data-testid="filter-estado"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos los estados</SelectItem>
-            <SelectItem value="activo">Activo</SelectItem>
-            <SelectItem value="inactivo">Inactivo</SelectItem>
-            <SelectItem value="baja">Baja</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={estadoCuota} onValueChange={setEstadoCuota}>
-          <SelectTrigger data-testid="filter-cuota"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Cuota: Todos</SelectItem>
-            <SelectItem value="al_dia">Al día</SelectItem>
-            <SelectItem value="con_deuda">Con deuda</SelectItem>
-          </SelectContent>
-        </Select>
+        {!isEntrenador && (
+          <>
+            <Select value={categoria} onValueChange={setCategoria}>
+              <SelectTrigger data-testid="filter-categoria"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas las categorías</SelectItem>
+                {categorias.map((c) => <SelectItem key={c} value={c}>Categoría {c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={estado} onValueChange={setEstado}>
+              <SelectTrigger data-testid="filter-estado"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los estados</SelectItem>
+                <SelectItem value="activo">Activo</SelectItem>
+                <SelectItem value="inactivo">Inactivo</SelectItem>
+                <SelectItem value="baja">Baja</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={estadoCuota} onValueChange={setEstadoCuota}>
+              <SelectTrigger data-testid="filter-cuota"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Cuota: Todos</SelectItem>
+                <SelectItem value="al_dia">Al día</SelectItem>
+                <SelectItem value="con_deuda">Con deuda</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        )}
       </div>
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -210,17 +225,17 @@ export default function Socios() {
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
-                {["N°", "Apellido y nombre", "Categoría", "Estado", "Cuota", "Madre, padre o tutor", ""].map((h) => (
+                {(isEntrenador ? ["N°", "Apellido y nombre", "Categoría", ""] : ["N°", "Apellido y nombre", "Categoría", "Estado", "Cuota", "Madre, padre o tutor", ""]).map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs uppercase tracking-wider font-semibold text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500"><Loader2 className="inline w-4 h-4 animate-spin mr-2" />Cargando...</td></tr>
+                <tr><td colSpan={isEntrenador ? 4 : 7} className="px-4 py-10 text-center text-slate-500"><Loader2 className="inline w-4 h-4 animate-spin mr-2" />Cargando...</td></tr>
               )}
               {!loading && list.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500 text-sm">Sin resultados.</td></tr>
+                <tr><td colSpan={isEntrenador ? 4 : 7} className="px-4 py-10 text-center text-slate-500 text-sm">Sin resultados.</td></tr>
               )}
               {!loading && list.map((s) => (
                 <tr key={s.id} data-testid={`socio-row-${s.numeroSocio}`} className="border-t border-slate-200 cursor-pointer" onClick={() => navigate(`/socios/${s.id}`)}>
@@ -231,18 +246,22 @@ export default function Socios() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">{s.categoria}</td>
-                  <td className="px-4 py-3"><BadgeEstado v={s.estado} /></td>
-                  <td className="px-4 py-3"><BadgeCuota v={s.estadoCuota} meses={s.mesesAdeudados?.length} /></td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{s.tutorNombre || "-"}</td>
+                  {!isEntrenador && (
+                    <>
+                      <td className="px-4 py-3"><BadgeEstado v={s.estado} /></td>
+                      <td className="px-4 py-3"><BadgeCuota v={s.estadoCuota} meses={s.mesesAdeudados?.length} /></td>
+                      <td className="px-4 py-3 text-sm text-slate-600">{s.tutorNombre || "-"}</td>
+                    </>
+                  )}
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <ActionMenu
                       testId={`actions-socio-${s.numeroSocio}`}
                       options={[
-                        { label: "Ver ficha", icon: Eye, color: "info", onClick: () => handleAction("ficha", s) },
-                        canEdit && { label: "Registrar pago", icon: CreditCard, color: "payment", onClick: () => handleAction("pago", s) },
-                        canEdit && { label: "Editar", icon: Pencil, color: "default", onClick: () => handleAction("editar", s) },
-                        canEdit && s.estado !== "baja" && { label: "Dar de baja", icon: UserX, color: "warning", onClick: () => handleAction("baja", s) },
-                        canDeletePermanente && s.estado === "baja" && { label: "Eliminar definitivo", icon: Trash2, color: "danger", onClick: () => handleAction("eliminar", s) },
+                        { label: isEntrenador ? "Ver carnet" : "Ver ficha", icon: Eye, color: "info", onClick: () => handleAction("ficha", s) },
+                        !isEntrenador && canEdit && { label: "Registrar pago", icon: CreditCard, color: "payment", onClick: () => handleAction("pago", s) },
+                        !isEntrenador && canEdit && { label: "Editar", icon: Pencil, color: "default", onClick: () => handleAction("editar", s) },
+                        !isEntrenador && canEdit && s.estado !== "baja" && { label: "Dar de baja", icon: UserX, color: "warning", onClick: () => handleAction("baja", s) },
+                        !isEntrenador && canDeletePermanente && s.estado === "baja" && { label: "Eliminar definitivo", icon: Trash2, color: "danger", onClick: () => handleAction("eliminar", s) },
                       ]}
                     />
                   </td>

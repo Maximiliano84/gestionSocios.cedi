@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 
 const NAV = [
-  { to: "/", label: "Inicio", icon: LayoutDashboard, roles: ["admin","secretaria","comision","entrenador"], end: true },
-  { to: "/socios", label: "Socios", icon: Users, roles: ["admin","secretaria","comision","entrenador"] },
+  { to: "/", label: "Inicio", icon: LayoutDashboard, roles: ["admin","secretaria","comision"], end: true },
+  { to: "/socios", label: "Socios / Carnets", icon: Users, roles: ["admin","secretaria","comision","entrenador"] },
   { to: "/pagos", label: "Pagos", icon: Receipt, roles: ["admin","secretaria","comision"] },
   { to: "/deudores", label: "Deudores", icon: AlertCircle, roles: ["admin","secretaria","comision"] },
-  { to: "/actividades", label: "Actividades", icon: Activity, roles: ["admin","secretaria","comision","entrenador"] },
+  { to: "/actividades", label: "Actividades", icon: Activity, roles: ["admin","secretaria","comision"] },
   { to: "/configuracion", label: "Configuración", icon: Settings, roles: ["admin"] },
 ];
 

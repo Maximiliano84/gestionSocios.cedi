@@ -24,7 +24,7 @@ function App() {
             <Route path="/carnet/:id" element={<CarnetPublico />} />
             <Route path="/carnet/:tipo/:id" element={<CarnetPublico />} />
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<ProtectedRoute roles={["admin","secretaria","comision"]}><Dashboard /></ProtectedRoute>} />
               <Route path="/socios" element={<Socios />} />
               <Route path="/socios/:id" element={<SocioDetalle />} />
               <Route
@@ -37,11 +37,11 @@ function App() {
               />
               <Route
                 path="/actividades"
-                element={<ProtectedRoute roles={["admin","secretaria","comision","entrenador"]}><Actividades /></ProtectedRoute>}
+                element={<ProtectedRoute roles={["admin","secretaria","comision"]}><Actividades /></ProtectedRoute>}
               />
               <Route
                 path="/actividades/alumnos/:id"
-                element={<ProtectedRoute roles={["admin","secretaria","comision","entrenador"]}><AlumnoActividadDetalle /></ProtectedRoute>}
+                element={<ProtectedRoute roles={["admin","secretaria","comision"]}><AlumnoActividadDetalle /></ProtectedRoute>}
               />
               <Route
                 path="/configuracion"

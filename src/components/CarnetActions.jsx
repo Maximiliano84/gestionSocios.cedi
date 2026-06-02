@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, Image as ImageIcon, Link as LinkIcon, MessageCircle } from "lucide-react";
 import { ConfirmActionDialog } from "@/components/ConfirmActionDialog";
 
-export default function CarnetActions({ linkPago, onDownloadImage, onSendPaymentLink, publicUrl }) {
+export default function CarnetActions({ linkPago, onDownloadImage, onSendPaymentLink, publicUrl, showPaymentActions = true }) {
   const [confirmDownload, setConfirmDownload] = useState(false);
   const [confirmPublic, setConfirmPublic] = useState(false);
   const actionClass =
@@ -11,7 +11,7 @@ export default function CarnetActions({ linkPago, onDownloadImage, onSendPayment
 
   return (
     <div className="mt-4 grid w-full grid-cols-1 gap-2">
-      {linkPago && (
+      {showPaymentActions && linkPago && (
         <a
           href={linkPago}
           target="_blank"
@@ -35,16 +35,18 @@ export default function CarnetActions({ linkPago, onDownloadImage, onSendPayment
         Descargar imagen
       </Button>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onSendPaymentLink}
-        data-testid="share-link-pago"
-        className={`${actionClass} border-emerald-200 text-emerald-700 hover:bg-emerald-50`}
-      >
-        <MessageCircle className="h-4 w-4" />
-        Enviar link de pago
-      </Button>
+      {showPaymentActions && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onSendPaymentLink}
+          data-testid="share-link-pago"
+          className={`${actionClass} border-emerald-200 text-emerald-700 hover:bg-emerald-50`}
+        >
+          <MessageCircle className="h-4 w-4" />
+          Enviar link de pago
+        </Button>
+      )}
 
       <Button
         type="button"

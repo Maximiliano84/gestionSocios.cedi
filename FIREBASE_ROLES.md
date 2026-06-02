@@ -1,61 +1,64 @@
-# Roles reales con Firebase Auth + Firestore
+# Roles y permisos - CEDI LOS 15
 
-La app ahora usa Firebase Authentication para iniciar sesión y Firestore para leer el rol del usuario.
+La app usa Firebase Authentication para iniciar sesión y Firestore para guardar permisos.
 
-## Colección requerida
+## Colección de permisos
 
-Crear una colección en Firestore:
-
-```txt
-usuarios
-```
-
-Cada documento debe tener como ID el `uid` del usuario creado en Firebase Authentication.
-
-Ejemplo de documento:
-
-```js
-{
-  nombre: "Maximiliano",
-  email: "admin@cedilos15.com",
-  rol: "administrador",
-  activo: true,
-  categoria: ""
-}
-```
-
-## Roles aceptados
-
-La app acepta estos valores:
+Cada usuario autorizado debe tener un documento en:
 
 ```txt
-administrador  -> se normaliza internamente como admin
-admin          -> admin
-secretaria
-comision
-comisión       -> comision
-entrenador
-consulta       -> entrenador
+usuarios/{UID_DE_FIREBASE_AUTH}
 ```
 
-## Reglas sugeridas para etapa de desarrollo controlada
-
-Estas reglas permiten que un usuario logueado lea su propio perfil. Para datos reales de socios y pagos todavía hay que endurecerlas antes de producción.
+Campos recomendados:
 
 ```js
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /usuarios/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if false;
-    }
-  }
-}
+email: "usuario@email.com"
+nombre: "Nombre Apellido"
+rol: "admin" | "secretaria" | "comision" | "entrenador"
+activo: true
+categoria: "2013" // solo obligatorio para rol entrenador
 ```
 
-## Importante
+## Roles
 
-Si el usuario existe en Authentication pero no tiene documento en `usuarios/{uid}`, la app no lo deja entrar.
+### admin
+Puede acceder a todo: configuración, usuarios, socios, actividades, pagos, deudores, comprobantes y carnets.
 
-Si `activo` está en `false`, la app cierra la sesión y muestra un mensaje.
+### secretaria
+Puede operar socios, actividades, pagos, comprobantes y carnets. No gestiona usuarios ni configuración sensible.
+
+### comision
+Puede consultar información general, deudores/reportes y carnets, sin registrar pagos ni editar datos sensibles.
+
+### entrenador
+Solo ve la sección Socios / Carnets. La app filtra automáticamente por la categoría cargada en su perfil de Firestore.
+
+El entrenador no ve:
+
+- Inicio / dashboard administrativo.
+- Pagos.
+- Deudores.
+- Actividades.
+- Configuración.
+- Datos administrativos del socio.
+- Historial de pagos.
+- Link de pago.
+
+El entrenador sí puede:
+
+- Ver jugadores de su categoría.
+- Abrir el carnet.
+- Descargar el carnet.
+- Abrir el carnet público.
+
+## Gestión desde la app
+
+En `Configuración → Usuarios y permisos`, el administrador puede:
+
+- Crear perfil de permisos para un usuario ya creado en Firebase Auth.
+- Editar nombre, email, rol, estado y categoría.
+- Activar/desactivar acceso.
+- Eliminar el perfil de permisos.
+
+Importante: esto no crea ni elimina cuentas de Firebase Authentication. Primero se crea el usuario en Firebase Auth y luego se carga su UID en la app.

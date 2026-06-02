@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, hasRole } from "@/context/AuthContext";
 
 export default function ProtectedRoute({ children, roles }) {
   const { user } = useAuth();
@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children, roles }) {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role)) {
+  if (roles && !hasRole(user, ...roles)) {
     return (
       <div className="p-10 text-center text-slate-600">
         <h2 className="text-2xl font-semibold mb-2">Acceso denegado</h2>

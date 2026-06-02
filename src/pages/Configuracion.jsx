@@ -78,6 +78,7 @@ export default function Configuracion() {
   const [editActividadId, setEditActividadId] = useState(null);
   const [editActividad, setEditActividad] = useState({ nombre: "", profesor: "", cuotaMensual: "", diaVencimiento: "", recargoFueraTermino: "" });
   const [openUser, setOpenUser] = useState(false);
+  const [editUser, setEditUser] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
@@ -243,6 +244,21 @@ export default function Configuracion() {
       run: async () => { await api.delete(`/users/${user.id}`); await load(); },
       okTitle: "Usuario eliminado",
       okDescription: "El usuario ya no aparece en la lista de accesos.",
+    });
+  };
+
+  const toggleUser = (user) => {
+    const nextActive = user.activo === false;
+    request({
+      title: nextActive ? "Activar usuario" : "Desactivar usuario",
+      description: nextActive
+        ? `¿Querés volver a activar el acceso de ${user.email}?`
+        : `¿Querés desactivar el acceso de ${user.email}? No se elimina de Firebase Auth, solo se bloquea en la app.`,
+      confirmText: nextActive ? "Activar" : "Desactivar",
+      variant: nextActive ? "default" : "warning",
+      run: async () => { await api.put(`/users/${user.id}`, { ...user, activo: nextActive }); await load(); },
+      okTitle: nextActive ? "Usuario activado" : "Usuario desactivado",
+      okDescription: "El estado del perfil quedó actualizado.",
     });
   };
 
@@ -460,8 +476,19 @@ export default function Configuracion() {
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="add-user-button"><Plus className="w-4 h-4 mr-2" />Nuevo usuario</Button>
             </DialogTrigger>
-            <NewUserDialog onSaved={() => { setOpenUser(false); load(); setFeedback({ title: "Perfil guardado", description: "El perfil de usuario quedó guardado en Firestore." }); }} categorias={cfg.categorias} setFeedback={setFeedback} />
+            <UserProfileDialog onSaved={() => { setOpenUser(false); load(); setFeedback({ title: "Perfil guardado", description: "El perfil de usuario quedó guardado en Firestore." }); }} categorias={cfg.categorias} setFeedback={setFeedback} />
           </Dialog>
+          {editUser && (
+            <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+              <UserProfileDialog
+                initial={editUser}
+                isEdit
+                categorias={cfg.categorias}
+                setFeedback={setFeedback}
+                onSaved={() => { setEditUser(null); load(); setFeedback({ title: "Perfil actualizado", description: "Los permisos quedaron guardados." }); }}
+              />
+            </Dialog>
+          )}
         </div>
         <div className="overflow-hidden rounded-2xl border border-slate-200">
           <div className="divide-y divide-slate-100">
@@ -473,9 +500,17 @@ export default function Configuracion() {
                     <span>{u.email}</span>
                     <RolePill role={u.role} />
                     {u.categoria ? <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">Cat. {u.categoria}</span> : null}
+                    {u.activo === false ? <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Inactivo</span> : <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">Activo</span>}
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="text-red-600" data-testid={`delete-user-${u.email}`} onClick={() => deleteUser(u)}><Trash2 className="w-4 h-4" /></Button>
+                <ActionMenu
+                  testId={`actions-user-${u.email}`}
+                  options={[
+                    { label: "Editar permisos", icon: Pencil, color: "info", onClick: () => setEditUser(u) },
+                    { label: u.activo === false ? "Activar" : "Desactivar", icon: u.activo === false ? Check : X, color: u.activo === false ? "success" : "warning", onClick: () => toggleUser(u) },
+                    { label: "Eliminar perfil", icon: Trash2, color: "danger", onClick: () => deleteUser(u) },
+                  ]}
+                />
               </div>
             ))}
           </div>
@@ -644,13 +679,21 @@ function Lbl({ k, children }) {
   );
 }
 
-function NewUserDialog({ onSaved, categorias, setFeedback }) {
-  const [data, setData] = useState({ uid: "", email: "", name: "", role: "secretaria", categoria: null });
+function UserProfileDialog({ initial = null, isEdit = false, onSaved, categorias, setFeedback }) {
+  const [data, setData] = useState(() => ({
+    uid: initial?.id || initial?.uid || "",
+    email: initial?.email || "",
+    name: initial?.name || initial?.nombre || "",
+    role: initial?.role || initial?.rol || "secretaria",
+    categoria: initial?.categoria || "",
+    activo: initial?.activo !== false,
+  }));
   const [saving, setSaving] = useState(false);
   const save = async () => {
     setSaving(true);
     try {
-      await api.post("/users", data);
+      if (isEdit) await api.put(`/users/${data.uid}`, data);
+      else await api.post("/users", data);
       onSaved();
     } catch (e) {
       setFeedback({ variant: "error", title: "No se pudo crear", description: formatApiError(e?.response?.data?.detail) });
@@ -658,14 +701,25 @@ function NewUserDialog({ onSaved, categorias, setFeedback }) {
   };
   return (
     <DialogContent className="max-w-md rounded-2xl">
-      <DialogHeader><DialogTitle>Nuevo perfil de usuario</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>{isEdit ? "Editar perfil de usuario" : "Nuevo perfil de usuario"}</DialogTitle></DialogHeader>
       <div className="space-y-3">
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-          Primero creá el usuario en Firebase Authentication. Después copiá su UID y cargá acá el perfil con su rol.
-        </p>
-        <Lbl k="UID de Firebase Auth"><Input value={data.uid} onChange={(e) => setData({ ...data, uid: e.target.value })} placeholder="Ej: 7Yx..." data-testid="newuser-uid" /></Lbl>
+        {!isEdit && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            Primero creá el usuario en Firebase Authentication. Después copiá su UID y cargá acá el perfil con su rol.
+          </p>
+        )}
+        <Lbl k="UID de Firebase Auth"><Input value={data.uid} onChange={(e) => setData({ ...data, uid: e.target.value })} placeholder="Ej: 7Yx..." data-testid="newuser-uid" disabled={isEdit} /></Lbl>
         <Lbl k="Nombre"><Input value={data.name} onChange={(e) => setData({ ...data, name: e.target.value })} data-testid="newuser-name" /></Lbl>
         <Lbl k="Email"><Input type="email" value={data.email} onChange={(e) => setData({ ...data, email: e.target.value })} data-testid="newuser-email" /></Lbl>
+        <Lbl k="Estado">
+          <Select value={data.activo ? "activo" : "inactivo"} onValueChange={(v) => setData({ ...data, activo: v === "activo" })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="activo">Activo</SelectItem>
+              <SelectItem value="inactivo">Inactivo</SelectItem>
+            </SelectContent>
+          </Select>
+        </Lbl>
         <Lbl k="Rol">
           <Select value={data.role} onValueChange={(v) => setData({ ...data, role: v })}>
             <SelectTrigger data-testid="newuser-role"><SelectValue /></SelectTrigger>
@@ -690,7 +744,7 @@ function NewUserDialog({ onSaved, categorias, setFeedback }) {
       </div>
       <DialogFooter>
         <Button onClick={save} disabled={saving || !data.uid || !data.email || !data.name} className="bg-blue-700 hover:bg-blue-800" data-testid="save-newuser">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar perfil"}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (isEdit ? "Guardar cambios" : "Guardar perfil")}
         </Button>
       </DialogFooter>
     </DialogContent>
