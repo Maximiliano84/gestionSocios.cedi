@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth, hasRole } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, Receipt, AlertCircle,
@@ -10,7 +10,7 @@ import api from "@/lib/api";
 
 const NAV = [
   { to: "/", label: "Inicio", icon: LayoutDashboard, roles: ["admin","secretaria","comision"], end: true },
-  { to: "/socios", label: "Socios / Carnets", icon: Users, roles: ["admin","secretaria","comision","entrenador"] },
+  { to: "/socios", label: "Socios", icon: Users, roles: ["admin","secretaria","comision","entrenador"] },
   { to: "/pagos", label: "Pagos", icon: Receipt, roles: ["admin","secretaria","comision"] },
   { to: "/deudores", label: "Deudores", icon: AlertCircle, roles: ["admin","secretaria","comision"] },
   { to: "/actividades", label: "Actividades", icon: Activity, roles: ["admin","secretaria","comision"] },
@@ -21,6 +21,8 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [club, setClub] = useState({ nombreClub: "CEDI LOS 15", logoUrl: "/logo-cedi.png" });
+  const navigate = useNavigate();
+  const appLogo = "/logo-cedi.png";
 
   useEffect(() => {
     api.get("/config").then(({ data }) => setClub({ nombreClub: data.nombreClub, logoUrl: data.logoUrl || "/logo-cedi.png" })).catch(() => {});
@@ -34,7 +36,7 @@ export default function Layout() {
   }[user?.role] || user?.role;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex w-64 flex-col bg-white border-r border-slate-200 fixed h-screen">
         <SidebarContent user={user} onNavigate={() => {}} club={club} />
@@ -69,10 +71,10 @@ export default function Layout() {
       )}
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="min-w-0 flex-1 lg:ml-64 flex flex-col min-h-screen">
         {/* Topbar */}
         <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-          <div className="flex items-center justify-between px-4 md:px-8 h-16">
+          <div className="relative flex items-center justify-between px-4 md:px-8 h-16">
             <button
               data-testid="open-sidebar-button"
               className="lg:hidden p-2 -ml-2 text-slate-700"
@@ -80,15 +82,15 @@ export default function Layout() {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <div className="lg:hidden flex items-center gap-2">
-              {club.logoUrl ? (
-                <img src={club.logoUrl} alt="logo" className="w-10 h-10 rounded-md object-contain" />
-              ) : (
-                <div className="w-10 h-10 rounded-md bg-blue-700 grid place-items-center text-white font-bold text-sm">15</div>
-              )}
-              <span className="font-bold text-slate-900">{club.nombreClub}</span>
-            </div>
-            <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="lg:hidden absolute left-1/2 -translate-x-1/2 grid h-12 w-12 place-items-center rounded-full bg-white"
+              onClick={() => navigate(hasRole(user, "entrenador") ? "/socios" : "/")}
+              aria-label="Ir al inicio"
+            >
+              <img src={appLogo} alt="Logo CEDI Los 15" className="h-11 w-11 object-contain" />
+            </button>
+            <div className="flex items-center gap-3 ml-auto">
               <div className="hidden sm:flex flex-col items-end leading-tight">
                 <span className="text-sm font-semibold text-slate-900" data-testid="topbar-user-name">{user?.name}</span>
                 <span className="text-xs text-slate-500">{roleLabel}</span>
@@ -100,14 +102,14 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="relative flex-1 p-4 md:p-8 overflow-hidden">
+        <main className="relative flex-1 w-full max-w-full overflow-x-hidden p-4 md:p-8">
           <img
-            src={club.logoUrl || "/logo-cedi.png"}
+            src={appLogo}
             alt=""
             aria-hidden="true"
             className="pointer-events-none select-none fixed right-[-80px] bottom-[-90px] w-[320px] md:w-[470px] opacity-[0.035] blur-[0.2px] z-0"
           />
-          <div className="relative z-10">
+          <div className="relative z-10 w-full max-w-full min-w-0">
             <Outlet />
           </div>
         </main>
@@ -117,12 +119,13 @@ export default function Layout() {
 }
 
 function SidebarContent({ user, onNavigate, club }) {
+  const appLogo = "/logo-cedi.png";
   return (
     <>
       <div className="px-6 py-6 border-b border-slate-200">
         <Link to="/" onClick={onNavigate} className="flex items-center gap-3">
-          {club?.logoUrl ? (
-            <img src={club.logoUrl} alt="logo" className="w-16 h-16 rounded-xl object-contain bg-slate-50" />
+          {appLogo ? (
+            <img src={appLogo} alt="logo" className="h-16 w-16 shrink-0 object-contain" />
           ) : (
             <div className="w-16 h-16 rounded-xl bg-blue-700 grid place-items-center text-white font-bold">
               <ShieldCheck className="w-7 h-7" />

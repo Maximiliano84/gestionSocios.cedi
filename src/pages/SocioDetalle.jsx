@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { SocioFormDialog } from "./Socios";
 import { formatMoney, formatMesYM, formatDate } from "@/utils/format";
-import { ArrowLeft, Pencil, CreditCard, AlertTriangle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Pencil,
+  CreditCard,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import html2canvas from "html2canvas";
 import RegistrarPagoDialog from "@/components/RegistrarPagoDialog";
 import CarnetDigital from "@/components/CarnetDigital";
@@ -17,12 +25,14 @@ export default function SocioDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [socio, setSocio] = useState(null);
   const [cfg, setCfg] = useState(null);
   const [categorias, setCategorias] = useState([]);
   const [editOpen, setEditOpen] = useState(false);
   const [pagoOpen, setPagoOpen] = useState(false);
   const carnetRef = useRef(null);
+  const exportCarnetRef = useRef(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
@@ -31,14 +41,23 @@ export default function SocioDetalle() {
       api.get(`/socios/${id}`),
       api.get("/config"),
     ]);
+
     setSocio(s.data);
     setCfg(c.data);
-    setCategorias(c.data.categorias);
+    setCategorias(c.data.categorias || []);
   };
-  useEffect(() => { load(); }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [id]);
 
   if (!socio || !cfg) {
-    return <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" />Cargando ficha...</div>;
+    return (
+      <div className="flex items-center justify-center py-16 text-slate-500">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        Cargando ficha...
+      </div>
+    );
   }
 
   const isEntrenador = hasRole(user, "entrenador");
@@ -57,7 +76,10 @@ export default function SocioDetalle() {
       variant: "danger",
       run: async () => {
         await api.delete(`/socios/${id}`);
-        setFeedback({ title: "Socio dado de baja", description: "El socio fue dado de baja correctamente." });
+        setFeedback({
+          title: "Socio dado de baja",
+          description: "El socio fue dado de baja correctamente.",
+        });
         load();
       },
     });
@@ -71,7 +93,10 @@ export default function SocioDetalle() {
       variant: "danger",
       run: async () => {
         await api.delete(`/socios/${id}/permanente`);
-        setFeedback({ title: "Socio eliminado", description: "El socio fue eliminado definitivamente." });
+        setFeedback({
+          title: "Socio eliminado",
+          description: "El socio fue eliminado definitivamente.",
+        });
         navigate("/socios");
       },
     });
@@ -79,177 +104,297 @@ export default function SocioDetalle() {
 
   function formatMesesHistorialPago(pago) {
     if (pago?.esPagoAnual) return "PAGO ANUAL";
+
     const meses = pago?.meses || [];
     if (meses.length === 12) return "PAGO ANUAL";
+
     return meses.map(formatMesYM).join(", ");
   }
 
   const downloadCarnetPNG = async () => {
-    if (!carnetRef.current) return;
-    const previousWidth = carnetRef.current.style.width;
-    const previousHeight = carnetRef.current.style.height;
-    const previousMaxWidth = carnetRef.current.style.maxWidth;
-    carnetRef.current.style.width = "560px";
-    carnetRef.current.style.height = "353px";
-    carnetRef.current.style.maxWidth = "560px";
-    const canvas = await html2canvas(carnetRef.current, { backgroundColor: null, scale: 3, useCORS: true, logging: false });
-    carnetRef.current.style.width = previousWidth;
-    carnetRef.current.style.height = previousHeight;
-    carnetRef.current.style.maxWidth = previousMaxWidth;
+    if (!exportCarnetRef.current) return;
+
+    await waitForCarnetImages(exportCarnetRef.current);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const qrCanvas = exportCarnetRef.current.querySelector("canvas");
+    const canvas = await createCarnetPngCanvas({
+      tipo: "socio",
+      nombreClub: cfg.nombreClub,
+      titulo: "Carnet de Socio",
+      etiquetaPersona: "Socio",
+      nombre: socio.nombre,
+      apellido: socio.apellido,
+      fotoUrl: socio.fotoUrl,
+      mostrarFoto,
+      detalles: [
+        { label: "N° Socio", value: `#${socio.numeroSocio}` },
+        { label: "Categoría", value: socio.categoria },
+      ],
+      estado: socio.estado,
+      fechaEmision: formatDate(fechaEmision),
+      qrCanvas,
+    });
+
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = `carnet-${socio.numeroSocio}-${socio.apellido}.png`;
+    a.download = `${sanitizeFileName(`carnet-${socio.numeroSocio}-${socio.apellido}`)}.png`;
     a.click();
   };
 
   const compartirLinkPago = () => {
     const txt = `Hola, te paso el link para abonar la cuota social de ${socio.nombre} ${socio.apellido} (Socio #${socio.numeroSocio} - ${cfg.nombreClub}):\n${cfg.linkPago || "(configurar link)"}\nAlias: ${cfg.aliasPago || "-"}\nGracias!`;
     const phone = (socio.tutorTelefono || "").replace(/\D/g, "");
-    const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(txt)}` : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+    const url = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(txt)}`
+      : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+
     window.open(url, "_blank");
   };
 
   return (
-    <div className="space-y-6" data-testid="socio-detalle-page">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <Link to="/socios" className="text-sm text-blue-700 hover:underline inline-flex items-center gap-1">
-            <ArrowLeft className="w-3 h-3" /> Volver a socios
+    <div className="mx-auto w-full max-w-7xl space-y-6 overflow-hidden" data-testid="socio-detalle-page">
+      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <Link
+            to="/socios"
+            className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline"
+          >
+            <ArrowLeft className="h-3 w-3 shrink-0" />
+            Volver a socios
           </Link>
-          <h1 className="text-3xl font-bold text-slate-900 mt-2" style={{ fontFamily: "Outfit, sans-serif" }}>
+
+          <h1
+            className="mt-2 break-words text-2xl font-bold text-slate-900 md:text-3xl"
+            style={{ fontFamily: "Outfit, sans-serif" }}
+          >
             {socio.apellido}, {socio.nombre}
           </h1>
-          <p className="text-slate-500 mt-1">Socio N° {socio.numeroSocio} · Categoría {socio.categoria} · Fútbol</p>
+
+          <p className="mt-1 break-words text-sm text-slate-500 sm:text-base">
+            Socio N° {socio.numeroSocio} · Categoría {socio.categoria} · Fútbol
+          </p>
+
           {isEntrenador && (
             <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
               Vista de entrenador: solo se muestra el carnet de la categoría asignada.
             </p>
           )}
         </div>
-        <div className="flex gap-2 flex-wrap">
+
+        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
           {canEdit && (
             <Dialog open={editOpen} onOpenChange={setEditOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" data-testid="edit-socio-button"><Pencil className="w-4 h-4 mr-2" />Editar</Button>
+                <Button variant="outline" className="w-full sm:w-auto" data-testid="edit-socio-button">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar
+                </Button>
               </DialogTrigger>
+
               <SocioFormDialog
                 initial={socio}
                 isEdit
                 socioId={id}
                 categorias={categorias}
-                onSaved={() => { setEditOpen(false); load(); }}
+                onSaved={() => {
+                  setEditOpen(false);
+                  load();
+                }}
               />
             </Dialog>
           )}
+
           {canEdit && socio.estado !== "baja" && (
-            <Button variant="outline" onClick={baja} className="text-red-600 border-red-200" data-testid="baja-socio-button">Dar de baja</Button>
-          )}
-          {canDeletePermanente && (
-            <Button variant="outline" onClick={eliminarDefinitivo} className="text-red-700 border-red-300 hover:bg-red-50" data-testid="eliminar-socio-button">
-              <Trash2 className="w-4 h-4 mr-2" />Eliminar definitivo
+            <Button
+              variant="outline"
+              onClick={baja}
+              className="w-full border-red-200 text-red-600 sm:w-auto"
+              data-testid="baja-socio-button"
+            >
+              Dar de baja
             </Button>
           )}
+
+          {canDeletePermanente && (
+            <Button
+              variant="outline"
+              onClick={eliminarDefinitivo}
+              className="w-full border-red-300 text-red-700 hover:bg-red-50 sm:w-auto"
+              data-testid="eliminar-socio-button"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Eliminar definitivo
+            </Button>
+          )}
+
           {canEdit && (
-            <Button className="bg-blue-700 hover:bg-blue-800" onClick={() => setPagoOpen(true)} data-testid="open-registrar-pago">
-              <CreditCard className="w-4 h-4 mr-2" />Registrar pago
+            <Button
+              className="w-full bg-blue-700 hover:bg-blue-800 sm:w-auto"
+              onClick={() => setPagoOpen(true)}
+              data-testid="open-registrar-pago"
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Registrar pago
             </Button>
           )}
         </div>
       </div>
 
-      <div className={isEntrenador ? "grid gap-6 max-w-[620px]" : "grid gap-6 xl:grid-cols-[minmax(0,1fr)_560px] lg:grid-cols-[minmax(0,1fr)_500px]"}>
+      <div
+        className={
+          isEntrenador
+            ? "grid min-w-0 gap-6"
+            : "grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_560px]"
+        }
+      >
         {!isEntrenador && (
-        <div className="space-y-6">
-          <Section title="Datos del socio">
-            <Row k="Estado" v={<EstadoBadge v={socio.estado} />} />
-            <Row k="Categoría" v={socio.categoria || "-"} />
-            <Row k="Fecha de alta" v={formatDate(socio.fechaAlta)} />
-            <Row k="Fecha de nacimiento" v={formatDate(socio.fechaNacimiento)} />
-            {canSeeSensitive && <Row k="DNI" v={socio.dni || "-"} />}
-            {canSeeSensitive && <Row k="Dirección" v={socio.direccion || "-"} />}
-            {canSeeSensitive && <Row k="Obra social" v={socio.obraSocial || "-"} />}
-            <Row k="Madre, padre o tutor" v={socio.tutorNombre || "-"} />
-            <Row k="Teléfono" v={socio.tutorTelefono || "-"} />
-            <Row k="Autorización imagen" v={socio.autorizacionImagen ? "Sí" : "No"} />
-            <Row k="Foto carnet" v={mostrarFoto ? "Cargada" : "No cargada o sin autorización"} />
-            <Row k="Observaciones" v={socio.observaciones || "-"} />
-          </Section>
+          <div className="min-w-0 space-y-6">
+            <Section title="Datos del socio">
+              <Row k="Estado" v={<EstadoBadge v={socio.estado} />} />
+              <Row k="Categoría" v={socio.categoria || "-"} />
+              <Row k="Fecha de alta" v={formatDate(socio.fechaAlta)} />
+              <Row k="Fecha de nacimiento" v={formatDate(socio.fechaNacimiento)} />
+              {canSeeSensitive && <Row k="DNI" v={socio.dni || "-"} />}
+              {canSeeSensitive && <Row k="Dirección" v={socio.direccion || "-"} />}
+              {canSeeSensitive && <Row k="Obra social" v={socio.obraSocial || "-"} />}
+              <Row k="Madre, padre o tutor" v={socio.tutorNombre || "-"} />
+              <Row k="Teléfono" v={socio.tutorTelefono || "-"} />
+              <Row k="Autorización imagen" v={socio.autorizacionImagen ? "Sí" : "No"} />
+              <Row k="Foto carnet" v={mostrarFoto ? "Cargada" : "No cargada o sin autorización"} />
+              <Row k="Observaciones" v={socio.observaciones || "-"} />
+            </Section>
 
-          <Section title="Estado administrativo">
-            <Row k="Cuota mensual" v={formatMoney(cfg.cuotaMensual || 0)} />
-            <Row k="Cuota" v={
-              socio.estadoCuota === "al_dia"
-                ? <span className="inline-flex items-center gap-1 text-emerald-700"><CheckCircle2 className="w-4 h-4" />Al día</span>
-                : <span className="inline-flex items-center gap-1 text-red-700"><AlertTriangle className="w-4 h-4" />Con deuda</span>
-            } />
-            <Row k="Meses adeudados" v={socio.mesesAdeudados?.length ? socio.mesesAdeudados.map(formatMesYM).join(", ") : "Sin deuda"} />
-            <Row k="Deuda total" v={formatMoney(socio.deudaTotal || 0)} />
-          </Section>
+            <Section title="Estado administrativo">
+              <Row k="Cuota mensual" v={formatMoney(cfg.cuotaMensual || 0)} />
 
-          <Section title="Historial de pagos">
-            {socio.pagos.length === 0 && <p className="text-sm text-slate-500">Sin pagos registrados.</p>}
-            {socio.pagos.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs uppercase font-semibold text-slate-500">Fecha</th>
-                      <th className="px-4 py-2 text-left text-xs uppercase font-semibold text-slate-500">Meses</th>
-                      <th className="px-4 py-2 text-left text-xs uppercase font-semibold text-slate-500">Monto</th>
-                      <th className="px-4 py-2 text-left text-xs uppercase font-semibold text-slate-500">Método</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {socio.pagos.map((p) => (
-                      <tr key={p.id} className="border-t border-slate-200">
-                        <td className="px-4 py-2 text-sm">{formatDate(p.fechaPago)}</td>
-                        <td className="px-4 py-2 text-sm">{formatMesesHistorialPago(p)}</td>
-                        <td className="px-4 py-2 text-sm font-semibold">{formatMoney(p.monto)}</td>
-                        <td className="px-4 py-2 text-sm capitalize">{p.metodo}</td>
+              <Row
+                k="Cuota"
+                v={
+                  socio.estadoCuota === "al_dia" ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-700">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      Al día
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-red-700">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      Con deuda
+                    </span>
+                  )
+                }
+              />
+
+              <Row
+                k="Meses adeudados"
+                v={socio.mesesAdeudados?.length ? socio.mesesAdeudados.map(formatMesYM).join(", ") : "Sin deuda"}
+              />
+
+              <Row k="Deuda total" v={formatMoney(socio.deudaTotal || 0)} />
+            </Section>
+
+            <Section title="Historial de pagos">
+              {socio.pagos.length === 0 && (
+                <p className="text-sm text-slate-500">Sin pagos registrados.</p>
+              )}
+
+              {socio.pagos.length > 0 && (
+                <div className="w-full overflow-x-auto rounded-lg border border-slate-100">
+                  <table className="min-w-[560px] w-full text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Fecha</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Meses</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Monto</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Método</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Section>
-        </div>
+                    </thead>
+                    <tbody>
+                      {socio.pagos.map((p) => (
+                        <tr key={p.id} className="border-t border-slate-200">
+                          <td className="whitespace-nowrap px-4 py-2">{formatDate(p.fechaPago)}</td>
+                          <td className="px-4 py-2">{formatMesesHistorialPago(p)}</td>
+                          <td className="whitespace-nowrap px-4 py-2 font-semibold">{formatMoney(p.monto)}</td>
+                          <td className="whitespace-nowrap px-4 py-2 capitalize">
+                            {p.metodo === "mercadopago" ? "Mercado Pago" : p.metodo}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Section>
+          </div>
         )}
 
-        <div className="space-y-4 w-full lg:justify-self-end">
-          <div className="w-full max-w-[560px] lg:max-w-none xl:w-[560px]">
-            <h3 className="mb-4 text-sm uppercase tracking-wider font-semibold text-slate-500">Carnet digital</h3>
-          <CarnetDigital
-            refProp={carnetRef}
-            tipo="socio"
-            nombreClub={cfg.nombreClub}
-            logoUrl={cfg.logoUrl}
-            titulo="Carnet de Socio"
-            etiquetaPersona="Socio"
-            nombre={socio.nombre}
-            apellido={socio.apellido}
-            fotoUrl={socio.fotoUrl}
-            mostrarFoto={mostrarFoto}
-            estado={socio.estado}
-            estadoCuota={socio.estadoCuota}
-            fechaEmision={fechaEmision}
-            qrValue={publicCarnetUrl}
-            detalles={[
-              { label: "N° Socio", value: `#${socio.numeroSocio}` },
-              { label: "Categoría", value: socio.categoria },
-            ]}
-            testId="carnet-card"
-          />
-          <CarnetActions
-            linkPago={cfg.linkPago}
-            onDownloadImage={downloadCarnetPNG}
-            onSendPaymentLink={compartirLinkPago}
-            publicUrl={publicCarnetUrl}
-            showPaymentActions={!isEntrenador}
-          />
+        <aside className={isEntrenador ? "min-w-0" : "min-w-0 space-y-4 xl:justify-self-end"}>
+          <div className="mx-auto w-full max-w-[560px]">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">
+              Carnet digital
+            </h3>
+
+            <div className="w-full overflow-hidden">
+              <CarnetDigital
+                refProp={carnetRef}
+                tipo="socio"
+                nombreClub={cfg.nombreClub}
+                logoUrl={cfg.logoUrl}
+                titulo="Carnet de Socio"
+                etiquetaPersona="Socio"
+                nombre={socio.nombre}
+                apellido={socio.apellido}
+                fotoUrl={socio.fotoUrl}
+                mostrarFoto={mostrarFoto}
+                estado={socio.estado}
+                estadoCuota={socio.estadoCuota}
+                fechaEmision={fechaEmision}
+                qrValue={publicCarnetUrl}
+                detalles={[
+                  { label: "N° Socio", value: `#${socio.numeroSocio}` },
+                  { label: "Categoría", value: socio.categoria },
+                ]}
+                testId="carnet-card"
+              />
+            </div>
+
+            <div className="mt-4">
+              <CarnetActions
+                linkPago={cfg.linkPago}
+                onDownloadImage={downloadCarnetPNG}
+                onSendPaymentLink={compartirLinkPago}
+                publicUrl={publicCarnetUrl}
+                showPaymentActions={!isEntrenador}
+              />
+
+              <div className="fixed left-[-10000px] top-0 h-[353px] w-[560px] overflow-hidden opacity-100 pointer-events-none">
+                <CarnetDigital
+                  refProp={exportCarnetRef}
+                  tipo="socio"
+                  nombreClub={cfg.nombreClub}
+                  logoUrl={cfg.logoUrl}
+                  titulo="Carnet de Socio"
+                  etiquetaPersona="Socio"
+                  nombre={socio.nombre}
+                  apellido={socio.apellido}
+                  fotoUrl={socio.fotoUrl}
+                  mostrarFoto={mostrarFoto}
+                  estado={socio.estado}
+                  estadoCuota={socio.estadoCuota}
+                  fechaEmision={fechaEmision}
+                  qrValue={publicCarnetUrl}
+                  detalles={[
+                    { label: "N° Socio", value: `#${socio.numeroSocio}` },
+                    { label: "Categoría", value: socio.categoria },
+                  ]}
+                  testId="carnet-card-export"
+                  exportMode
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        </aside>
       </div>
 
       <RegistrarPagoDialog
@@ -257,7 +402,10 @@ export default function SocioDetalle() {
         onOpenChange={setPagoOpen}
         socio={socio}
         cfg={cfg}
-        onSaved={() => { setPagoOpen(false); load(); }}
+        onSaved={() => {
+          setPagoOpen(false);
+          load();
+        }}
       />
 
       <ConfirmActionDialog
@@ -270,8 +418,15 @@ export default function SocioDetalle() {
         onConfirm={async () => {
           const action = confirmAction;
           setConfirmAction(null);
-          try { await action?.run?.(); }
-          catch (e) { setFeedback({ variant: "error", title: "No se pudo completar", description: formatApiError(e?.response?.data?.detail) }); }
+          try {
+            await action?.run?.();
+          } catch (e) {
+            setFeedback({
+              variant: "error",
+              title: "No se pudo completar",
+              description: formatApiError(e?.response?.data?.detail),
+            });
+          }
         }}
       />
 
@@ -288,25 +443,315 @@ export default function SocioDetalle() {
 
 function Section({ title, children }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-5">
-      <h3 className="text-base font-semibold text-slate-900 mb-4">{title}</h3>
-      <div className="space-y-2">{children}</div>
-    </div>
+    <section className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-4 sm:p-5">
+      <h3 className="mb-4 break-words text-base font-semibold text-slate-900">
+        {title}
+      </h3>
+      <div className="space-y-1">{children}</div>
+    </section>
   );
 }
+
 function Row({ k, v }) {
   return (
-    <div className="flex items-start justify-between py-1.5 border-b border-slate-100 last:border-0">
-      <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold pt-0.5">{k}</span>
-      <span className="text-sm text-slate-900 text-right">{v}</span>
+    <div className="grid min-w-0 gap-1 border-b border-slate-100 py-3 last:border-0 sm:grid-cols-[190px_minmax(0,1fr)] sm:items-start sm:gap-4">
+      <span className="min-w-0 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        {k}
+      </span>
+      <span className="min-w-0 break-words text-sm font-medium text-slate-900 sm:text-right [&_*]:break-words">
+        {v}
+      </span>
     </div>
   );
 }
+
 function EstadoBadge({ v }) {
   const map = {
     activo: "bg-emerald-100 text-emerald-800",
     inactivo: "bg-slate-100 text-slate-700",
     baja: "bg-red-100 text-red-800",
   };
-  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${map[v]}`}>{v}</span>;
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${map[v] || map.inactivo}`}>
+      {v}
+    </span>
+  );
+}
+
+
+function sanitizeFileName(value) {
+  return String(value || "carnet")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function waitForCarnetImages(node) {
+  if (!node) return Promise.resolve();
+  const images = Array.from(node.querySelectorAll("img"));
+  return Promise.all(
+    images.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    })
+  );
+}
+
+function loadCanvasImage(src) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function roundedRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function drawImageContain(ctx, img, x, y, w, h) {
+  if (!img) return;
+  const ratio = Math.min(w / img.width, h / img.height);
+  const nw = img.width * ratio;
+  const nh = img.height * ratio;
+  ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh);
+}
+
+function drawImageCover(ctx, img, x, y, w, h, r = 0) {
+  if (!img) return;
+  const ratio = Math.max(w / img.width, h / img.height);
+  const nw = img.width * ratio;
+  const nh = img.height * ratio;
+  const sx = (w - nw) / 2;
+  const sy = (h - nh) / 2;
+  ctx.save();
+  if (r) {
+    roundedRect(ctx, x, y, w, h, r);
+    ctx.clip();
+  }
+  ctx.drawImage(img, x + sx, y + sy, nw, nh);
+  ctx.restore();
+}
+
+function drawTextFit(ctx, text, x, y, maxWidth, font, color, align = "left") {
+  const value = String(text || "-");
+  ctx.save();
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.textBaseline = "alphabetic";
+
+  let output = value;
+  if (ctx.measureText(output).width > maxWidth) {
+    while (output.length > 1 && ctx.measureText(`${output}…`).width > maxWidth) {
+      output = output.slice(0, -1);
+    }
+    output = `${output}…`;
+  }
+
+  ctx.fillText(output, x, y);
+  ctx.restore();
+}
+
+function drawLetterSpacedText(ctx, text, centerX, y, spacing, font, color, maxWidth) {
+  const value = String(text || "").toUpperCase();
+  ctx.save();
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textBaseline = "alphabetic";
+
+  let total = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    total += ctx.measureText(value[i]).width;
+    if (i < value.length - 1) total += spacing;
+  }
+
+  if (total > maxWidth) {
+    ctx.textAlign = "center";
+    ctx.fillText(value, centerX, y, maxWidth);
+    ctx.restore();
+    return;
+  }
+
+  let x = centerX - total / 2;
+  for (let i = 0; i < value.length; i += 1) {
+    ctx.fillText(value[i], x, y);
+    x += ctx.measureText(value[i]).width + spacing;
+  }
+  ctx.restore();
+}
+
+async function createCarnetPngCanvas({
+  tipo,
+  nombreClub,
+  titulo,
+  etiquetaPersona,
+  nombre,
+  apellido,
+  fotoUrl,
+  mostrarFoto,
+  detalles,
+  estado,
+  fechaEmision,
+  qrCanvas,
+}) {
+  const W = 560;
+  const H = 353;
+  const SCALE = 3;
+  const canvas = document.createElement("canvas");
+  canvas.width = W * SCALE;
+  canvas.height = H * SCALE;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(SCALE, SCALE);
+
+  const isActividad = tipo === "actividad";
+  const colors = isActividad
+    ? ["#064e3b", "#166534", "#365314"]
+    : ["#172554", "#1e3a8a", "#0f172a"];
+  const labelColor = isActividad ? "#d1fae5" : "#dbeafe";
+
+  roundedRect(ctx, 0, 0, W, H, 28);
+  ctx.clip();
+
+  const gradient = ctx.createLinearGradient(0, 0, W, H);
+  gradient.addColorStop(0, colors[0]);
+  gradient.addColorStop(0.55, colors[1]);
+  gradient.addColorStop(1, colors[2]);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.beginPath();
+  ctx.arc(W - 60, -15, 110, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255,255,255,0.035)";
+  ctx.beginPath();
+  ctx.arc(-35, H + 35, 145, 0, Math.PI * 2);
+  ctx.fill();
+
+  const logo = await loadCanvasImage("/logo-cedi.png");
+  ctx.save();
+  ctx.globalAlpha = 0.055;
+  drawImageContain(ctx, logo, 150, 56, 260, 260);
+  ctx.restore();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 1;
+  roundedRect(ctx, 0.5, 0.5, W - 1, H - 1, 28);
+  ctx.stroke();
+
+  drawImageContain(ctx, logo, 20, 20, 110, 110);
+
+const photo = mostrarFoto ? await loadCanvasImage(fotoUrl) : null;
+
+ctx.save();
+roundedRect(ctx, 416, 18, 124, 124, 18);
+ctx.fillStyle = "#f8fafc";
+ctx.fill();
+ctx.restore();
+
+if (photo) {
+  drawImageCover(ctx, photo, 418, 20, 120, 120, 16);
+} else {
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "12px Arial, Helvetica, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Sin foto", 478, 80);
+}
+
+  drawLetterSpacedText(
+    ctx,
+    nombreClub || "CEDI LOS 15",
+    280,
+    56,
+    5,
+    "700 17px Arial, Helvetica, sans-serif",
+    "rgba(255,255,255,0.72)",
+    310
+  );
+
+  drawTextFit(
+    ctx,
+    titulo,
+    280,
+    92,
+    310,
+    "900 25px Arial, Helvetica, sans-serif",
+    "#ffffff",
+    "center"
+  );
+
+  roundedRect(ctx, 22, 198, 390, 130, 18);
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = labelColor;
+  ctx.font = "700 10px Arial, Helvetica, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  drawLetterSpacedText(ctx, etiquetaPersona, 70, 211, 3.4, "700 10px Arial, Helvetica, sans-serif", labelColor, 120);
+
+  drawTextFit(
+    ctx,
+    `${nombre || ""} ${apellido || ""}`.trim(),
+    38,
+    239,
+    345,
+    "900 20px Arial, Helvetica, sans-serif",
+    "#ffffff",
+    "left"
+  );
+
+  const allDetails = [
+    ...(detalles || []),
+    { label: "Estado", value: estado },
+    { label: "Emisión", value: fechaEmision },
+  ].slice(0, 4);
+
+  const positions = [
+    [38, 269],
+    [216, 269],
+    [38, 303],
+    [216, 303],
+  ];
+
+  allDetails.forEach((d, index) => {
+    const [x, y] = positions[index];
+    drawTextFit(ctx, d.label, x, y, 150, "700 8px Arial, Helvetica, sans-serif", "rgba(255,255,255,0.58)", "left");
+    drawTextFit(ctx, d.value, x, y + 17, 150, "800 12px Arial, Helvetica, sans-serif", "#ffffff", "left");
+  });
+
+  roundedRect(ctx, 436, 224, 104, 104, 16);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  if (qrCanvas) {
+    ctx.drawImage(qrCanvas, 442, 230, 92, 92);
+  }
+
+  return canvas;
 }

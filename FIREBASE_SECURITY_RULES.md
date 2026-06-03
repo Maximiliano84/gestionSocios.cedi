@@ -20,18 +20,24 @@ Pegá esto en **Firestore Database > Rules**.
 
 ```js
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
     }
 
-    function profile() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    function userProfilePath() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
     }
 
     function hasProfile() {
-      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+      return signedIn() && exists(userProfilePath());
+    }
+
+    function profile() {
+      return get(userProfilePath());
     }
 
     function isActive() {
@@ -42,32 +48,42 @@ service cloud.firestore {
       return profile().data.rol;
     }
 
+    function userCategoria() {
+      return profile().data.categoria;
+    }
+
     function isAdmin() {
-      return isActive() && (role() == 'admin' || role() == 'administrador');
+      return isActive() && (role() == "admin" || role() == "administrador");
     }
 
     function isSecretary() {
-      return isActive() && role() == 'secretaria';
+      return isActive() && role() == "secretaria";
     }
 
     function isCommission() {
-      return isActive() && (role() == 'comision' || role() == 'comisión');
+      return isActive() && (role() == "comision" || role() == "comisión");
     }
 
     function isTrainer() {
-      return isActive() && role() == 'entrenador';
+      return isActive() && role() == "entrenador";
     }
 
     function canReadAdminData() {
-      return isAdmin() || isSecretary() || isCommission() || isTrainer();
+      return isAdmin() || isSecretary() || isCommission();
     }
 
     function canWriteAdminData() {
       return isAdmin() || isSecretary();
     }
 
+    function trainerCanReadSocio() {
+      return isTrainer()
+        && userCategoria() != null
+        && resource.data.categoria == userCategoria();
+    }
+
     match /usuarios/{userId} {
-      allow read: if isActive();
+      allow read: if isAdmin() || request.auth.uid == userId;
       allow create, update, delete: if isAdmin();
     }
 
@@ -93,13 +109,18 @@ service cloud.firestore {
     }
 
     match /socios/{docId} {
-      allow read: if canReadAdminData();
+      allow read: if canReadAdminData() || trainerCanReadSocio();
       allow create, update: if canWriteAdminData();
       allow delete: if isAdmin();
     }
 
     match /pagosSocios/{docId} {
-      allow read: if isAdmin() || isSecretary() || isCommission();
+      allow read: if canReadAdminData();
+      allow create, update, delete: if canWriteAdminData();
+    }
+
+    match /carnetsPublicos/{docId} {
+      allow read: if true;
       allow create, update, delete: if canWriteAdminData();
     }
 
@@ -108,33 +129,3 @@ service cloud.firestore {
     }
   }
 }
-```
-
-## Nota importante sobre “Ver carnet público”
-
-El enlace de carnet público actualmente necesita calcular estado de cuota usando datos reales.
-Con reglas seguras, un usuario anónimo no debería leer `socios`, `alumnosActividades` ni pagos completos.
-
-Para un carnet realmente público y seguro, el próximo paso recomendado es crear una colección separada:
-
-```txt
-carnetsPublicos/{id}
-```
-
-con datos mínimos y no sensibles:
-
-```js
-{
-  tipo: "socio",
-  nombre: "Juan",
-  apellido: "Pérez",
-  categoria: "2015",
-  estado: "activo",
-  estadoCuota: "al_dia",
-  fotoUrl: "",
-  autorizacionImagen: true,
-  actualizadoEn: ...
-}
-```
-
-Ahí sí se puede permitir lectura pública solo de `carnetsPublicos`, sin exponer DNI, teléfonos, direcciones, obra social ni pagos.

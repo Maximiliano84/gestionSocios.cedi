@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Loader2, Download, Eye, CreditCard, Pencil, UserX, Trash2 } from "lucide-react";
 import { downloadCsv } from "@/utils/exportCsv";
@@ -152,6 +152,7 @@ export default function Socios() {
                   <Plus className="w-4 h-4 mr-2" /> Agregar socio
                 </Button>
               </DialogTrigger>
+              
               <SocioFormDialog
                 key={`nuevo-socio-${openNew ? "open" : "closed"}`}
                 categorias={categorias}

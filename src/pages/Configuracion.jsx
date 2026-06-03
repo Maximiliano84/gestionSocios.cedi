@@ -298,10 +298,10 @@ export default function Configuracion() {
   if (!cfg) return <div className="flex items-center justify-center py-16 text-slate-500"><Loader2 className="w-5 h-5 animate-spin mr-2" />Cargando...</div>;
 
   return (
-    <div className="space-y-6 max-w-6xl" data-testid="config-page">
+    <div className="w-full max-w-6xl space-y-6 overflow-x-hidden" data-testid="config-page">
       <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-700 via-blue-800 to-slate-950 p-6 text-white shadow-sm">
         <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10" />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-100">
               <Settings className="h-3.5 w-3.5" /> Panel administrativo
@@ -309,13 +309,13 @@ export default function Configuracion() {
             <h1 className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>Configuración</h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-blue-100">Datos del club, valores de cuota, actividades, usuarios y reportes. Esta sección prepara la base para cuando conectemos Firebase.</p>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="flex w-full flex-col gap-3 lg:w-auto lg:items-end">
+            <div className="grid w-full grid-cols-3 gap-2 text-center lg:w-auto">
               <MiniStat label="Categorías" value={resumen.categorias} />
               <MiniStat label="Actividades" value={resumen.actividades} />
               <MiniStat label="Usuarios" value={resumen.usuarios} />
             </div>
-            <Button onClick={save} disabled={saving} className="bg-white text-blue-800 hover:bg-blue-50" data-testid="save-config-top">
+            <Button onClick={save} disabled={saving} className="w-full bg-white text-blue-800 hover:bg-blue-50 lg:w-auto" data-testid="save-config-top">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="mr-2 h-4 w-4" />Guardar cambios</>}
             </Button>
           </div>
@@ -569,9 +569,9 @@ function RolePill({ role }) {
 
 function MiniStat({ label, value }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-100">{label}</div>
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/10 px-2 py-3 backdrop-blur sm:px-4">
+      <div className="text-xl font-bold sm:text-2xl">{value}</div>
+      <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-blue-100 sm:text-[11px]">{label}</div>
     </div>
   );
 }

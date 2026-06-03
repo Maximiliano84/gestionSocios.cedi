@@ -89,3 +89,51 @@ h1, h2, h3, h4, h5, h6 {
         display: contents !important;
     }
 }
+
+/* Mobile stability fixes */
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img, video, canvas, svg {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  h1 { font-size: 2rem; line-height: 1.1; }
+  main table { min-width: max-content; }
+  [data-radix-dialog-content] {
+    width: calc(100vw - 1.5rem) !important;
+    max-width: calc(100vw - 1.5rem) !important;
+    max-height: calc(100dvh - 2rem) !important;
+    overflow-y: auto;
+  }
+  .mobile-safe-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  main, main > div, main section, main article, main form,
+  main .grid, main .flex, main .bg-white, main .rounded-lg, main .rounded-2xl, main .rounded-3xl {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  main .overflow-x-auto {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main button, main a, main input, main select, main textarea {
+    max-width: 100%;
+  }
+
+  main input, main textarea {
+    min-width: 0;
+  }
+}
