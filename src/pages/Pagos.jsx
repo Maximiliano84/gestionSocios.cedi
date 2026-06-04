@@ -10,6 +10,8 @@ import { formatMoney, formatDate, formatMesYM, formatMetodoPago } from "@/utils/
 import ActionMenu from "@/components/ActionMenu";
 import { ConfirmActionDialog, FeedbackDialog } from "@/components/ConfirmActionDialog";
 import { downloadCsv } from "@/utils/exportCsv";
+import PagosSummaryCard from "@/components/payments/PagosSummaryCard";
+import DateFilterField from "@/components/payments/DateFilterField";
 
 function normalizar(texto = "") {
   return String(texto).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -202,10 +204,10 @@ export default function Pagos() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <ResumenCard icon={CreditCard} label={mes ? `Total por fecha ${formatMesYM(mes)}` : "Total filtrado"} value={formatMoney(resumen.total)} />
-        <ResumenCard icon={Banknote} label="Efectivo" value={formatMoney(resumen.efectivo)} />
-        <ResumenCard icon={CreditCard} label="Mercado Pago" value={formatMoney(resumen.mercadoPago)} />
-        <ResumenCard icon={ListFilter} label="Movimientos" value={resumen.cantidad} details={resumen.otros > 0 ? `Otros: ${formatMoney(resumen.otros)}` : ""} />
+        <PagosSummaryCard icon={CreditCard} tone="blue" label={mes ? `Total por fecha ${formatMesYM(mes)}` : "Total filtrado"} value={formatMoney(resumen.total)} />
+        <PagosSummaryCard icon={Banknote} tone="emerald" label="Efectivo" value={formatMoney(resumen.efectivo)} />
+        <PagosSummaryCard icon={CreditCard} tone="amber" label="Mercado Pago" value={formatMoney(resumen.mercadoPago)} />
+        <PagosSummaryCard icon={ListFilter} tone="slate" label="Movimientos" value={resumen.cantidad} details={resumen.otros > 0 ? `Otros: ${formatMoney(resumen.otros)}` : ""} />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
@@ -246,11 +248,14 @@ export default function Pagos() {
             </SelectContent>
           </Select>
         </div>
-        <div className="grid md:grid-cols-4 gap-3">
-          <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} />
-          <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} placeholder="Desde" />
-          <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} placeholder="Hasta" />
-          <Button type="button" variant="outline" onClick={clearFilters}>Limpiar filtros</Button>
+        <div className="grid gap-3 md:grid-cols-4 md:items-end">
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Mes</span>
+            <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="h-11 bg-white text-slate-900 [color-scheme:light]" />
+          </label>
+          <DateFilterField label="Desde" value={desde} onChange={setDesde} testId="pagos-filter-desde" />
+          <DateFilterField label="Hasta" value={hasta} onChange={setHasta} testId="pagos-filter-hasta" />
+          <Button type="button" variant="outline" onClick={clearFilters} className="h-11">Limpiar filtros</Button>
         </div>
       </div>
 
@@ -327,17 +332,3 @@ export default function Pagos() {
   );
 }
 
-function ResumenCard({ icon: Icon, label, value, details }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-700 grid place-items-center"><Icon className="w-5 h-5" /></div>
-        <div>
-          <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">{label}</p>
-          <p className="text-xl font-bold text-slate-900">{value}</p>
-          {details && <p className="text-xs text-slate-500 mt-0.5">{details}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}

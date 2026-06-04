@@ -27,7 +27,6 @@ import {
   Link as LinkIcon,
   DollarSign,
   UserCog,
-  FileDown,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -279,17 +278,6 @@ export default function Configuracion() {
     categorias: cfg?.categorias?.length || 0,
   }), [actividades.length, users.length, cfg?.categorias?.length]);
 
-  const estadoConfiguracion = useMemo(() => ([
-    { label: "Nombre del club", ok: !!cfg?.nombreClub?.trim() },
-    { label: "Cuota fútbol", ok: Number(cfg?.cuotaMensual || 0) > 0 },
-    { label: "Link de pago", ok: !!cfg?.linkPago?.trim() },
-    { label: "Alias / CVU", ok: !!cfg?.aliasPago?.trim() },
-    { label: "Mensaje WhatsApp", ok: !!cfg?.mensajeWhatsapp?.trim() },
-    { label: "Categorías", ok: (cfg?.categorias || []).length > 0 },
-    { label: "Actividades", ok: actividades.length > 0 },
-    { label: "Usuarios", ok: users.length > 0 },
-  ]), [cfg, actividades.length, users.length]);
-
   const mensajeEjemplo = useMemo(() => (cfg?.mensajeWhatsapp || "")
     .replaceAll("{nombre}", "Juan Pérez")
     .replaceAll("{meses}", "mayo y junio")
@@ -321,17 +309,6 @@ export default function Configuracion() {
           </div>
         </div>
       </div>
-
-      <Card icon={ShieldCheck} title="Estado de configuración" description="Chequeo rápido de los datos mínimos para que la app funcione bien." accent="slate">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {estadoConfiguracion.map((item) => (
-            <div key={item.label} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold ${item.ok ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-amber-100 bg-amber-50 text-amber-700"}`}>
-              {item.ok ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-              {item.label}
-            </div>
-          ))}
-        </div>
-      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card icon={Settings} title="Datos del club" description="Información general que se usa en carnets, mensajes y pantallas principales." accent="blue">
@@ -403,42 +380,53 @@ export default function Configuracion() {
       </Card>
 
       <Card icon={Activity} title="Configurar actividades" description="Alta, edición y baja de actividades independientes del fútbol." accent="emerald">
-        <div className="grid items-end gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 md:grid-cols-[1fr_1fr_150px_120px_150px_auto]">
-          <Lbl k="Actividad"><Input value={newActividad.nombre} onChange={(e) => setNewActividad((v) => aplicarReglaHockey({ ...v, nombre: e.target.value }))} placeholder="Ej: Hockey" /></Lbl>
-          <Lbl k="Profesor/a"><Input value={newActividad.profesor} onChange={(e) => setNewActividad((v) => ({ ...v, profesor: e.target.value }))} placeholder="Ej: Profe Laura" /></Lbl>
-          <Lbl k="Cuota mensual"><Input type="number" value={newActividad.cuotaMensual} onChange={(e) => setNewActividad((v) => ({ ...v, cuotaMensual: e.target.value }))} placeholder="12000" /></Lbl>
-          <Lbl k="Vence día"><Input type="number" min="1" max="31" value={newActividad.diaVencimiento} onChange={(e) => setNewActividad((v) => ({ ...v, diaVencimiento: e.target.value }))} placeholder="10" /></Lbl>
-          <Lbl k="Recargo"><Input type="number" value={newActividad.recargoFueraTermino} onChange={(e) => setNewActividad((v) => ({ ...v, recargoFueraTermino: e.target.value }))} placeholder="3000" /></Lbl>
-          <Button type="button" size="icon" onClick={addActividad} disabled={savingActividad || !newActividad.nombre.trim()} title="Agregar actividad" aria-label="Agregar actividad" className="bg-emerald-600 hover:bg-emerald-700">
-            {savingActividad ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          </Button>
+        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-sm font-bold text-emerald-950">Nueva actividad</div>
+              <div className="text-xs text-emerald-700">Cargá nombre, profesor/a, cuota y vencimiento en un solo lugar.</div>
+            </div>
+            <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+              {actividades.length} cargadas
+            </span>
+          </div>
+          <div className="grid items-end gap-3 lg:grid-cols-[1fr_1fr_150px_120px_150px_auto]">
+            <Lbl k="Actividad"><Input value={newActividad.nombre} onChange={(e) => setNewActividad((v) => aplicarReglaHockey({ ...v, nombre: e.target.value }))} placeholder="Ej: Hockey" /></Lbl>
+            <Lbl k="Profesor/a"><Input value={newActividad.profesor} onChange={(e) => setNewActividad((v) => ({ ...v, profesor: e.target.value }))} placeholder="Ej: Profe Laura" /></Lbl>
+            <Lbl k="Cuota mensual"><Input type="number" value={newActividad.cuotaMensual} onChange={(e) => setNewActividad((v) => ({ ...v, cuotaMensual: e.target.value }))} placeholder="12000" /></Lbl>
+            <Lbl k="Vence día"><Input type="number" min="1" max="31" value={newActividad.diaVencimiento} onChange={(e) => setNewActividad((v) => ({ ...v, diaVencimiento: e.target.value }))} placeholder="10" /></Lbl>
+            <Lbl k="Recargo"><Input type="number" value={newActividad.recargoFueraTermino} onChange={(e) => setNewActividad((v) => ({ ...v, recargoFueraTermino: e.target.value }))} placeholder="3000" /></Lbl>
+            <Button type="button" onClick={addActividad} disabled={savingActividad || !newActividad.nombre.trim()} title="Agregar actividad" aria-label="Agregar actividad" className="h-10 bg-emerald-600 hover:bg-emerald-700 lg:w-10 lg:px-0">
+              {savingActividad ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4 lg:mr-0" /><span className="lg:sr-only">Agregar</span></>}
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+        <div className="mt-5 space-y-3">
           {actividades.length === 0 ? (
-            <div className="p-5 text-sm text-slate-500">Todavía no hay actividades cargadas.</div>
+            <div className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">Todavía no hay actividades cargadas.</div>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {actividades.map((actividad) => (
-                <div key={actividad.id} className="grid gap-3 p-4 md:grid-cols-[1fr_1fr_140px_170px_auto] md:items-center">
-                  {editActividadId === actividad.id ? (
-                    <>
-                      <Input value={editActividad.nombre} onChange={(e) => setEditActividad((v) => aplicarReglaHockey({ ...v, nombre: e.target.value }))} />
-                      <Input value={editActividad.profesor} onChange={(e) => setEditActividad((v) => ({ ...v, profesor: e.target.value }))} placeholder="Profesor/a" />
-                      <Input type="number" value={editActividad.cuotaMensual} onChange={(e) => setEditActividad((v) => ({ ...v, cuotaMensual: e.target.value }))} placeholder="Cuota" />
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input type="number" min="1" max="31" value={editActividad.diaVencimiento} onChange={(e) => setEditActividad((v) => ({ ...v, diaVencimiento: e.target.value }))} placeholder="Día venc." />
-                        <Input type="number" value={editActividad.recargoFueraTermino} onChange={(e) => setEditActividad((v) => ({ ...v, recargoFueraTermino: e.target.value }))} placeholder="Recargo" />
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button type="button" size="icon" onClick={() => saveActividad(actividad.id)} disabled={savingActividad || !editActividad.nombre.trim()} className="bg-emerald-600 hover:bg-emerald-700">
-                          {savingActividad ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        </Button>
-                        <Button type="button" size="icon" variant="outline" onClick={cancelEditActividad}><X className="w-4 h-4" /></Button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
+            actividades.map((actividad) => (
+              <div key={actividad.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-100 hover:bg-emerald-50/20">
+                {editActividadId === actividad.id ? (
+                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_140px_170px_auto] md:items-end">
+                    <Lbl k="Actividad"><Input value={editActividad.nombre} onChange={(e) => setEditActividad((v) => aplicarReglaHockey({ ...v, nombre: e.target.value }))} /></Lbl>
+                    <Lbl k="Profesor/a"><Input value={editActividad.profesor} onChange={(e) => setEditActividad((v) => ({ ...v, profesor: e.target.value }))} placeholder="Profesor/a" /></Lbl>
+                    <Lbl k="Cuota"><Input type="number" value={editActividad.cuotaMensual} onChange={(e) => setEditActividad((v) => ({ ...v, cuotaMensual: e.target.value }))} placeholder="Cuota" /></Lbl>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Lbl k="Día"><Input type="number" min="1" max="31" value={editActividad.diaVencimiento} onChange={(e) => setEditActividad((v) => ({ ...v, diaVencimiento: e.target.value }))} placeholder="Día" /></Lbl>
+                      <Lbl k="Recargo"><Input type="number" value={editActividad.recargoFueraTermino} onChange={(e) => setEditActividad((v) => ({ ...v, recargoFueraTermino: e.target.value }))} placeholder="Recargo" /></Lbl>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" size="icon" onClick={() => saveActividad(actividad.id)} disabled={savingActividad || !editActividad.nombre.trim()} className="bg-emerald-600 hover:bg-emerald-700">
+                        {savingActividad ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      </Button>
+                      <Button type="button" size="icon" variant="outline" onClick={cancelEditActividad}><X className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       <InfoBlock title={actividad.nombre} subtitle="Actividad" />
                       <InfoBlock title={actividad.profesor || "A definir"} subtitle="Profesor/a" />
                       <InfoBlock title={formatMoney(actividad.cuotaMensual || 0)} subtitle="Cuota mensual" strong />
@@ -446,20 +434,20 @@ export default function Configuracion() {
                         title={actividad.diaVencimiento ? `Día ${actividad.diaVencimiento} · ${formatMoney(actividad.recargoFueraTermino || 0)}` : "Sin recargo"}
                         subtitle="Vencimiento / recargo"
                       />
-                      <div className="text-right">
-                        <ActionMenu
-                          testId={`config-actividad-actions-${actividad.id}`}
-                          options={[
-                            { label: "Editar", icon: Pencil, color: "info", onClick: () => startEditActividad(actividad) },
-                            { label: "Eliminar", icon: Trash2, color: "danger", onClick: () => removeActividad(actividad) },
-                          ]}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+                    </div>
+                    <div className="self-end md:self-center">
+                      <ActionMenu
+                        testId={`config-actividad-actions-${actividad.id}`}
+                        options={[
+                          { label: "Editar", icon: Pencil, color: "info", onClick: () => startEditActividad(actividad) },
+                          { label: "Eliminar", icon: Trash2, color: "danger", onClick: () => removeActividad(actividad) },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </div>
       </Card>

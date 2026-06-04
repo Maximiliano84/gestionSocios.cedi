@@ -140,11 +140,11 @@ export default function Login() {
           </div>
           <div className="grid grid-cols-3 gap-6 text-sm">
             <div>
-              <div className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>+20</div>
+              <div className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>+300</div>
               <div className="opacity-80">Socios</div>
             </div>
             <div>
-              <div className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>7</div>
+              <div className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>18</div>
               <div className="opacity-80">Categorías</div>
             </div>
             <div>

@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function Login() {
   const { user, login, resetPassword, error, setError } = useAuth();
@@ -13,8 +13,12 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  if (user) return <Navigate to={user?.role === "entrenador" ? "/socios" : "/"} replace />;
+  if (user)
+    return (
+      <Navigate to={user?.role === "entrenador" ? "/socios" : "/"} replace />
+    );
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -41,19 +45,35 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-6 bg-white">
         <div className="w-full max-w-md">
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-12 h-12 rounded-xl bg-blue-700 grid place-items-center text-white">
-              <ShieldCheck className="w-6 h-6" />
+            <div className="w-14 h-14 rounded-xl bg-white grid place-items-center overflow-hidden border border-slate-200 shadow-sm p-1.5">
+              <img
+                src="/logo-cedi.png"
+                alt="Escudo CEDI LOS 15"
+                className="h-full w-full object-contain"
+              />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: "Outfit, sans-serif" }}>CEDI LOS 15</h1>
-              <p className="text-xs text-slate-500 uppercase tracking-wider">Gestión de Socios</p>
+              <h1
+                className="text-2xl font-bold text-slate-900"
+                style={{ fontFamily: "Outfit, sans-serif" }}
+              >
+                CEDI LOS 15
+              </h1>
+              <p className="text-xs text-slate-500 uppercase tracking-wider">
+                Gestión de Socios
+              </p>
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold text-slate-900 mb-2" style={{ fontFamily: "Outfit, sans-serif" }}>
+          <h2
+            className="text-3xl font-bold text-slate-900 mb-2"
+            style={{ fontFamily: "Outfit, sans-serif" }}
+          >
             Bienvenido
           </h2>
-          <p className="text-slate-600 mb-8">Ingresá tus credenciales para acceder al panel.</p>
+          <p className="text-slate-600 mb-8">
+            Ingresá tus credenciales para acceder al panel.
+          </p>
 
           <form onSubmit={onSubmit} className="space-y-5">
             <div>
@@ -81,16 +101,30 @@ export default function Login() {
                   {resetLoading ? "Enviando..." : "¿Olvidaste tu contraseña?"}
                 </button>
               </div>
-              <Input
-                id="password"
-                data-testid="login-password-input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="mt-1.5"
-              />
+              <div className="relative mt-1.5">
+                <Input
+                  id="password"
+                  data-testid="login-password-input"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="pr-20"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-800"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
             {resetMessage && (
               <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
@@ -98,7 +132,10 @@ export default function Login() {
               </div>
             )}
             {error && (
-              <div data-testid="login-error" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              <div
+                data-testid="login-error"
+                className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"
+              >
                 {error}
               </div>
             )}
@@ -108,13 +145,20 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-blue-700 hover:bg-blue-800 text-white h-11 text-sm font-semibold"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ingresar"}
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Ingresar"
+              )}
             </Button>
           </form>
 
           <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-800">
             <p className="font-semibold mb-1">Acceso con Firebase</p>
-            <p>Ingresá con un usuario creado en Firebase Authentication. Los permisos se leen desde Firestore en la colección usuarios.</p>
+            <p>
+              Ingresá con un usuario creado en Firebase Authentication. Los
+              permisos se leen desde Firestore en la colección usuarios.
+            </p>
           </div>
         </div>
       </div>
@@ -129,26 +173,47 @@ export default function Login() {
           }}
         />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <div className="text-xs uppercase tracking-[0.2em] opacity-80">Club de Barrio</div>
+          <div className="text-xs uppercase tracking-[0.2em] opacity-80">
+            Club de Barrio
+          </div>
           <div>
-            <h3 className="text-5xl font-bold leading-tight mb-4" style={{ fontFamily: "Outfit, sans-serif" }}>
+            <h3
+              className="text-5xl font-bold leading-tight mb-4"
+              style={{ fontFamily: "Outfit, sans-serif" }}
+            >
               El club, ordenado.
             </h3>
             <p className="text-lg opacity-90 max-w-md">
-              Socios, cuotas, pagos, deudores, carnets digitales y validación por QR — todo en un solo lugar.
+              Socios, cuotas, pagos, deudores, carnets digitales y validación
+              por QR — todo en un solo lugar.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-6 text-sm">
             <div>
-              <div className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>+20</div>
+              <div
+                className="text-3xl font-bold"
+                style={{ fontFamily: "Outfit, sans-serif" }}
+              >
+                +300
+              </div>
               <div className="opacity-80">Socios</div>
             </div>
             <div>
-              <div className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>7</div>
+              <div
+                className="text-3xl font-bold"
+                style={{ fontFamily: "Outfit, sans-serif" }}
+              >
+                18
+              </div>
               <div className="opacity-80">Categorías</div>
             </div>
             <div>
-              <div className="text-3xl font-bold" style={{ fontFamily: "Outfit, sans-serif" }}>QR</div>
+              <div
+                className="text-3xl font-bold"
+                style={{ fontFamily: "Outfit, sans-serif" }}
+              >
+                QR
+              </div>
               <div className="opacity-80">Carnets digitales</div>
             </div>
           </div>
